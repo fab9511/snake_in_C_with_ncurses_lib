@@ -1,0 +1,10 @@
+Alice 1200
+Fabian 1000
+Bob 900
+Charlie 700
+Bob 700
+Ar21 700
+Fabian__2 400
+Ada 400
+AS 300
+G 200

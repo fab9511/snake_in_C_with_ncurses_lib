@@ -4,6 +4,7 @@ project(SnakeGame C)
 set(CMAKE_C_STANDARD 99)
 find_package(Curses REQUIRED)
 
+configure_file(highscores.txt highscores.txt COPYONLY)
 add_executable(snake main.c)
 target_link_libraries(snake PRIVATE ${CURSES_LIBRARIES})
 

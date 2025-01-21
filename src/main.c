@@ -3,12 +3,19 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
+#include <string.h>
 #include <ncurses.h>
 
 #define WIDTH 45 
 #define HEIGHT 45
 #define MAX_LENGTH 100
+#define MAX_SCORES 10
     
+typedef struct {
+    char name[50];
+    int score;
+} HighScore;
+
 typedef struct {
     int x, y;  // Pozycja
 } Segment;
@@ -28,41 +35,181 @@ typedef struct {
     Snake snake;               // gracz
     Food food;                 // Jedzenie
     int score;                 // Wynik
+    HighScore scores[MAX_SCORES];
+    int scoreCount;
     bool gameOver;             // Czy koniec gry??
 } GameState;
 
+void displayMenu(GameState *state);     //in progress
+int loadHighScores(HighScore scores[]); //yes
+void displayHighscores(GameState *state, int count); //yes
+void sortHighScores(HighScore scores[], int count);  //yes
+void saveHighScores(HighScore scores[], int count); //yes
+void addHighScore(HighScore scores[], int *count, char *name, int score); //yes
+int chooseDifficulty();
 void initializeGame(GameState *state);  //yes
 void drawBoard(GameState *state);       //yes
 void handleInput(GameState *state);     //yes
 void updateGame(GameState *state);      //yes
 bool checkCollision(GameState *state);  //yes
 void growSnake(GameState *state);       //yes 
-void spawnFood(GameState *state);    //in progress
+void spawnFood(GameState *state);       //yes
 
 int main() {
     GameState state;
+    state.scoreCount = loadHighScores(state.scores);
+    
+    displayMenu(&state);
     initializeGame(&state);
-
+    
     while(!state.gameOver) {
         handleInput(&state);
         updateGame(&state);
         drawBoard(&state);
         usleep(100000);
     }
-   
- 
-    // Po zakończeniu gry
-    mvprintw(HEIGHT / 2, WIDTH / 2 - 5, "Game Over!");
+    
+    //clear();
+    mvprintw(HEIGHT / 2, WIDTH / 2 - 5, "GAME OVER!");
+    mvprintw(HEIGHT / 2 + 1, WIDTH / 2 - 5, "Score: %d", state.score);
     refresh();
-    usleep(2000000); // Czekaj 2s
+    nodelay(stdscr, FALSE); // czekaj na wcisniecie klawisza 
+    getch();
+    
+    //if(state.scoreCount>10) {
+      //  for(int i = 0; i < state.scoreCount; i++) {
+        //    if(state.score > state.scores[i]) {
+    //zapis wyniku
+    if (state.score > 0) {
+        char playerName[50];
+        mvprintw(HEIGHT / 2 + 3, WIDTH / 2 - 5, "Enter your name: ");
+        refresh();
+        echo();
+        mvgetstr(HEIGHT / 2 + 4, WIDTH / 2 - 5, playerName);
+        noecho();
+        
+        addHighScore(state.scores, &state.scoreCount, playerName, state.score);
+        saveHighScores(state.scores, state.scoreCount);
+    }    
+
+
     endwin(); //exit ncurses
+
     return 0;
 }
 
-void initializeGame(GameState *state) {
+int loadHighScores(HighScore scores[]) {
+    FILE *file = fopen("highscores.txt", "r");
+    if (file == NULL) 
+        return 0; // Plik nie istnieje, brak wyników
+
+    int count = 0;
+    while (count < MAX_SCORES && fscanf(file, "%s %d", scores[count].name, &scores[count].score) == 2) {
+        count++;
+    }
+
+    fclose(file);
+    return count; // ile wyników
+}
+
+void displayMenu(GameState *state) {
     initscr();    //tryb ncurses
     noecho();
     curs_set(FALSE); //brak kursora
+    clear();
+
+    int choice = 0;
+
+    while (true) {
+        mvprintw(5, WIDTH / 2 - 5, "=== SNAKE GAME ===");
+        mvprintw(7, WIDTH / 2 - 5, "1. PLAY");
+        mvprintw(8, WIDTH / 2 - 5, "2. CHOOSE DIFICULTY");
+        mvprintw(9, WIDTH / 2 - 5, "3. HIGHSCORE");
+        mvprintw(10, WIDTH / 2 - 5, "4. EXIT");
+        mvprintw(12, WIDTH / 2 - 5, "Choose option: ");
+        refresh();
+        
+        choice = getch(); // Odczyt wyboru gracza
+        
+        switch (choice) {
+            case '1':
+                clear();
+                return; // Rozpocznij grę
+            case '2':
+                //chooseDifficulty();
+                return;
+            case '3':
+                displayHighscores(state, state->scoreCount);
+                break;
+            case '4':
+                endwin();
+                exit(0); // Wyjście z gry
+           // default:
+             //   mvprintw(13, WIDTH / 2 - 10, "");
+               // refresh();
+              //  usleep(1000000);
+        }
+    }
+}
+
+void displayHighscores(GameState *state, int count) {
+    clear();
+    mvprintw(3, WIDTH / 2 - 8, "=== HIGHSCORE ===");
+
+    if (count == 0) {
+        mvprintw(10, WIDTH / 2 - 5, "No highscore yet.");
+    } else {
+        for (int i = 0; i < count; i++) {
+            mvprintw(5 + i, WIDTH / 2 - 8, "%d. %s - %d", i + 1, state->scores[i].name, state->scores[i].score);
+        }
+    }
+
+    mvprintw(5 + count + 2, WIDTH / 2 - 8, "Press any key to go back.");
+    refresh();
+    nodelay(stdscr, FALSE);
+    getch();
+    nodelay(stdscr, TRUE);
+
+    clear();
+}
+
+void sortHighScores(HighScore scores[], int count) {
+    for (int i = 0; i < count - 1; i++) {
+        for (int j = 0; j < count - i - 1; j++) {
+            if (scores[j].score < scores[j + 1].score) {
+                HighScore temp = scores[j];
+                scores[j] = scores[j + 1];
+                scores[j + 1] = temp;
+            }
+        }
+    }
+}
+
+void saveHighScores(HighScore scores[], int count) {
+    FILE *file = fopen("highscores.txt", "w");
+    if (file != NULL) {
+        for (int i = 0; i < count && i < MAX_SCORES; i++) {
+            fprintf(file, "%s %d\n", scores[i].name, scores[i].score);
+        }
+        fclose(file);
+    }
+}
+
+void addHighScore(HighScore scores[], int *count, char *name, int score) {
+    if (*count < MAX_SCORES) {
+        strcpy(scores[*count].name, name);
+        scores[*count].score = score;
+        (*count)++;
+    } 
+    else if (score > scores[*count - 1].score) { 
+        strcpy(scores[*count - 1].name, name);
+        scores[*count - 1].score = score;
+    }
+
+    sortHighScores(scores, *count);
+}
+ 
+void initializeGame(GameState *state) {
     keypad(stdscr, TRUE);
     nodelay(stdscr, TRUE); //nie czekaj na input    
     start_color();
@@ -88,7 +235,7 @@ void initializeGame(GameState *state) {
     //poziome
     for(int i = 0; i < WIDTH; i++) {
         state->board[i][0] = '_';
-        state->board[i][HEIGHT-1] = '_';
+        state->board[i][HEIGHT-1] = 175;
     }
 
     // snake
@@ -101,7 +248,14 @@ void initializeGame(GameState *state) {
     srand(time(NULL));
     spawnFood(state);
     
-    clear();
+    clear();    
+    // highscores
+    attron(COLOR_PAIR(4));
+    mvprintw(8 , WIDTH + 5 , "Highscores:");
+    for (int i = 0; i < state->scoreCount; i++) {
+        mvprintw(10 + 2*i, WIDTH + 5, "%d. %s - %d", i + 1, state->scores[i].name, state->scores[i].score);
+    }
+    attroff(COLOR_PAIR(4));
 }
 
 void drawBoard(GameState *state) {
@@ -114,8 +268,9 @@ void drawBoard(GameState *state) {
     
     // snake
     attron(COLOR_PAIR(1));
-    for (int i = 0; i < state->snake.length; i++)
-        mvprintw(state->snake.segments[i].y, state->snake.segments[i].x, "O");
+    mvprintw(state->snake.segments[0].y, state->snake.segments[0].x, "O");
+    for (int i = 1; i < state->snake.length; i++)
+        mvprintw(state->snake.segments[i].y, state->snake.segments[i].x, "o");
     attroff(COLOR_PAIR(1));
     
     // jedzenie
@@ -126,8 +281,7 @@ void drawBoard(GameState *state) {
     
     //wynik
     attron(COLOR_PAIR(4));
-    mvprintw(HEIGHT, 0, "Score: %d", state->score);
-    mvprintw(2, WIDTH+5, "Score: %d", state->score);
+    mvprintw(3, WIDTH + 5, "Score: %d", state->score);
     attroff(COLOR_PAIR(4));
 }
 
@@ -150,7 +304,15 @@ void handleInput(GameState *state) {
         case 'x':
             state->gameOver = true;
             break;
-    }
+        case 'p':
+            nodelay(stdscr, FALSE); 
+            mvprintw(HEIGHT / 2, 4, "Paused. Press any key to continue.");
+            refresh();
+            getch();
+            nodelay(stdscr, TRUE);
+            break;
+        }
+
 }
 
 void updateGame(GameState *state) {
