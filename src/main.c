@@ -40,13 +40,14 @@ typedef struct {
     bool gameOver;             // Czy koniec gry??
 } GameState;
 
-void displayMenu(GameState *state);     //in progress
+void displayMenu(GameState *state);     //yes
+void displayMoves();                    //yes
 int loadHighScores(HighScore scores[]); //yes
 void displayHighscores(GameState *state, int count); //yes
 void sortHighScores(HighScore scores[], int count);  //yes
 void saveHighScores(HighScore scores[], int count); //yes
 void addHighScore(HighScore scores[], int *count, char *name, int score); //yes
-int chooseDifficulty();
+int chooseDifficulty();                 //no no
 void initializeGame(GameState *state);  //yes
 void drawBoard(GameState *state);       //yes
 void handleInput(GameState *state);     //yes
@@ -59,6 +60,7 @@ int main() {
     GameState state;
     state.scoreCount = loadHighScores(state.scores);
     
+    start: 
     displayMenu(&state);
     initializeGame(&state);
     
@@ -69,16 +71,12 @@ int main() {
         usleep(100000);
     }
     
-    //clear();
     mvprintw(HEIGHT / 2, WIDTH / 2 - 5, "GAME OVER!");
     mvprintw(HEIGHT / 2 + 1, WIDTH / 2 - 5, "Score: %d", state.score);
     refresh();
     nodelay(stdscr, FALSE); // czekaj na wcisniecie klawisza 
     getch();
     
-    //if(state.scoreCount>10) {
-      //  for(int i = 0; i < state.scoreCount; i++) {
-        //    if(state.score > state.scores[i]) {
     //zapis wyniku
     if (state.score > 0) {
         char playerName[50];
@@ -91,8 +89,9 @@ int main() {
         addHighScore(state.scores, &state.scoreCount, playerName, state.score);
         saveHighScores(state.scores, state.scoreCount);
     }    
-
-
+    
+    displayHighscores(&state, state.scoreCount);
+    goto start;
     endwin(); //exit ncurses
 
     return 0;
@@ -125,8 +124,9 @@ void displayMenu(GameState *state) {
         mvprintw(7, WIDTH / 2 - 5, "1. PLAY");
         mvprintw(8, WIDTH / 2 - 5, "2. CHOOSE DIFICULTY");
         mvprintw(9, WIDTH / 2 - 5, "3. HIGHSCORE");
-        mvprintw(10, WIDTH / 2 - 5, "4. EXIT");
-        mvprintw(12, WIDTH / 2 - 5, "Choose option: ");
+        mvprintw(10, WIDTH / 2 - 5, "4. HOW TO PLAY");
+        mvprintw(11, WIDTH / 2 - 5, "5. EXIT");
+        mvprintw(13, WIDTH / 2 - 5, "Choose option: ");
         refresh();
         
         choice = getch(); // Odczyt wyboru gracza
@@ -142,6 +142,9 @@ void displayMenu(GameState *state) {
                 displayHighscores(state, state->scoreCount);
                 break;
             case '4':
+                displayMoves();
+                break;
+            case '5':
                 endwin();
                 exit(0); // Wyjście z gry
            // default:
@@ -152,6 +155,24 @@ void displayMenu(GameState *state) {
     }
 }
 
+void displayMoves() {
+    clear();
+    mvprintw(3, WIDTH / 2 - 8, "=== HOW TO PLAY ===");
+    mvprintw(5, WIDTH / 2 - 10, "Snake's moves:");
+    mvprintw(6, WIDTH / 2 - 10, "W or key UP - to go up");
+    mvprintw(7, WIDTH / 2 - 10, "S or key DOWN - to go down");
+    mvprintw(8, WIDTH / 2 - 10, "A or key LEFT - to go left");
+    mvprintw(9, WIDTH / 2 - 10, "D or key RIGHT - to go right");
+    mvprintw(11, WIDTH / 2 - 10, "Others:");
+    mvprintw(12, WIDTH / 2 - 10, "P - to pause a game");
+    mvprintw(13, WIDTH / 2 - 10, "X - to exit during a game");
+    mvprintw(15, WIDTH / 2 - 10, "Press any key to go back.");
+    refresh();
+    nodelay(stdscr, FALSE);
+    getch();
+    nodelay(stdscr, TRUE);
+    clear();
+}
 void displayHighscores(GameState *state, int count) {
     clear();
     mvprintw(3, WIDTH / 2 - 8, "=== HIGHSCORE ===");
