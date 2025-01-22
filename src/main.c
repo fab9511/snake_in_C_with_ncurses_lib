@@ -26,35 +26,49 @@ typedef struct {
     char direction;               // Kierunek: 'W', 'A', 'S', 'D'
 } Snake;
 
+//rodzaje owocow
+typedef enum {
+    NORMAL, 
+    SPECIAL,
+    POISON
+} FoodType;
+
 typedef struct {
     int x, y;  // Pozycja jedzenia
+    FoodType type;
+    bool active; 
 } Food;
 
 typedef struct {
     char board[HEIGHT][WIDTH]; // Plansza gry
     Snake snake;               // gracz
-    Food food;                 // Jedzenie
+    Food food[3];                 // Jedzenie  0-normal 1-special 2-poison  
     int score;                 // Wynik
     HighScore scores[MAX_SCORES];
     int scoreCount;
+    time_t startTime;
     bool gameOver;             // Czy koniec gry??
 } GameState;
 
 void displayMenu(GameState *state);     //yes
+void chooseDifficulty(GameState *state); // no no
 void displayMoves();                    //yes
 int loadHighScores(HighScore scores[]); //yes
 void displayHighscores(GameState *state, int count); //yes
 void sortHighScores(HighScore scores[], int count);  //yes
 void saveHighScores(HighScore scores[], int count); //yes
 void addHighScore(HighScore scores[], int *count, char *name, int score); //yes
-int chooseDifficulty();                 //no no
 void initializeGame(GameState *state);  //yes
 void drawBoard(GameState *state);       //yes
 void handleInput(GameState *state);     //yes
 void updateGame(GameState *state);      //yes
 bool checkCollision(GameState *state);  //yes
 void growSnake(GameState *state);       //yes 
-void spawnFood(GameState *state);       //yes
+void spawnFood(GameState *state, FoodType type); //yes
+void drawTimer(GameState *state);        //yes 
+void drawFood(GameState *state);        //yes
+void checkEatingFruit(GameState *state); //in progress
+
 
 int main() {
     GameState state;
@@ -68,7 +82,9 @@ int main() {
         handleInput(&state);
         updateGame(&state);
         drawBoard(&state);
-        usleep(100000);
+        drawTimer(&state);
+        //usleep(100000);
+        usleep(75000);
     }
     
     mvprintw(HEIGHT / 2, WIDTH / 2 - 5, "GAME OVER!");
@@ -153,6 +169,10 @@ void displayMenu(GameState *state) {
               //  usleep(1000000);
         }
     }
+}
+
+void chooseDifficulty(GameState *state) {
+    return;
 }
 
 void displayMoves() {
@@ -243,6 +263,9 @@ void initializeGame(GameState *state) {
     // score
     state->score = 0;
     state->gameOver = false;    
+   
+    //czas poczatkowy 
+    state->startTime = time(NULL); 
     
     //plansza
     for (int i = 0; i < HEIGHT; i++)
@@ -267,8 +290,10 @@ void initializeGame(GameState *state) {
 
     // jedzenie 
     srand(time(NULL));
-    spawnFood(state);
-    
+    spawnFood(state, NORMAL);
+    state->food[SPECIAL].active = false;    
+    state->food[POISON].active = false;
+
     clear();    
     // highscores
     attron(COLOR_PAIR(4));
@@ -277,6 +302,13 @@ void initializeGame(GameState *state) {
         mvprintw(10 + 2*i, WIDTH + 5, "%d. %s - %d", i + 1, state->scores[i].name, state->scores[i].score);
     }
     attroff(COLOR_PAIR(4));
+}
+
+void drawTimer(GameState *state) {
+    time_t currentTime = time(NULL);
+    int elapsedTime = (int)(currentTime - state->startTime);
+
+    mvprintw(2, WIDTH + 5, "Time: %02d:%02d", elapsedTime / 60, elapsedTime % 60);
 }
 
 void drawBoard(GameState *state) {
@@ -295,15 +327,36 @@ void drawBoard(GameState *state) {
     attroff(COLOR_PAIR(1));
     
     // jedzenie
-    attron(COLOR_PAIR(2));
-    mvprintw(state->food.y, state->food.x, "@");  
-    attroff(COLOR_PAIR(2));
+    drawFood(state);
+    
     refresh();
     
     //wynik
-    attron(COLOR_PAIR(4));
     mvprintw(3, WIDTH + 5, "Score: %d", state->score);
-    attroff(COLOR_PAIR(4));
+}
+
+void drawFood(GameState *state) {
+    for (int i = 0; i < 3; i++) {
+        if (state->food[i].active) {
+            switch (state->food[i].type) {
+                case NORMAL:
+                    attron(COLOR_PAIR(2)); // Kolor czerwony
+                    mvprintw(state->food[i].y, state->food[i].x, "@");
+                    attroff(COLOR_PAIR(2));
+                    break;
+                case SPECIAL:
+                    attron(COLOR_PAIR(4)); // Kolor żółty
+                    mvprintw(state->food[i].y, state->food[i].x, "*");
+                    attroff(COLOR_PAIR(4));
+                    break;
+                case POISON:
+                    attron(COLOR_PAIR(3)); // Kolor niebieski
+                    mvprintw(state->food[i].y, state->food[i].x, "!");
+                    attroff(COLOR_PAIR(3));
+                    break;
+            }
+        }
+    }
 }
 
 void handleInput(GameState *state) {
@@ -355,11 +408,7 @@ void updateGame(GameState *state) {
         state->gameOver = true;
 
     // zjadl owoc ??
-    if (state->snake.segments[0].x == state->food.x && state->snake.segments[0].y == state->food.y) {
-        state->score += 100;
-        growSnake(state);
-        spawnFood(state);    
-    }
+    checkEatingFruit(state);
 }
 
 bool checkCollision(GameState *state) {
@@ -378,8 +427,41 @@ bool checkCollision(GameState *state) {
             return true;
         }
     }
-    
     return false;
+}
+
+void checkEatingFruit(GameState *state) {
+    for (int i = 0; i < 3; i++) {
+        if (state->food[i].active &&
+            state->snake.segments[0].x == state->food[i].x &&
+            state->snake.segments[0].y == state->food[i].y) {
+        
+            switch (state->food[i].type) {
+                case NORMAL:
+                    state->score += 100;
+                    growSnake(state);
+                    spawnFood(state, NORMAL);
+                    break;
+                case SPECIAL:
+                    state->score += 300; // Wyższy bonus punktowy
+                    growSnake(state);
+                    growSnake(state); // Szybszy wzrost
+                    spawnFood(state, SPECIAL);
+                    break;
+                case POISON:
+                    state->score -= 200; // Kara punktowa
+                    if (state->snake.length > 1) {
+                        state->snake.length--; // kara skroc snake'a
+                    } else {
+                        state->gameOver = true; // Koniec gry gdy 1 segment i poison
+                    }
+                    spawnFood(state, POISON);
+                    break;
+            }
+            state->food[i].active = false; // Owoc został zjedzony
+        }
+        state->food[NORMAL].active = true;
+    }
 }
 
 void growSnake(GameState *state) {
@@ -387,22 +469,34 @@ void growSnake(GameState *state) {
         state->snake.length++;
 }
 
-void spawnFood(GameState *state) {
+void spawnFood(GameState *state, FoodType type) {
     bool validPosition;
-    
+    int x,y;
+ 
     do {
         validPosition = true;
         // Losowanie pozycji owoca
-        state->food.x = 1 + rand() % (WIDTH - 2);
-        state->food.y = 1 + rand() % (HEIGHT - 2);
+        x = 1 + rand() % (WIDTH - 2);
+        y = 1 + rand() % (HEIGHT - 2);
 
         // czy nie jest na wezu
         for (int i = 0; i < state->snake.length; i++) {
-            if (state->food.x == state->snake.segments[i].x &&
-                state->food.y == state->snake.segments[i].y) {
+            if ((x == state->snake.segments[i].x) && (y == state->snake.segments[i].y)) {
                 validPosition = false;
                 break;
             }
         }
+        // czy nie jest na innym owocu
+        if ((NORMAL != type) && (x == state->food[NORMAL].x) && (y == state->food[NORMAL].y))
+            validPosition = false;
+        else if ((SPECIAL != type) && (x == state->food[SPECIAL].x) && (y == state->food[SPECIAL].y))
+            validPosition = false;
+        else if ((POISON != type) && (x == state->food[POISON].x) && (y == state->food[POISON].y))
+            validPosition = false;
     } while (!validPosition);
+
+    state->food[type].x = x;
+    state->food[type].y = y;
+    state->food[type].type = type;
+    state->food[type].active = true;
 }
