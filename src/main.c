@@ -36,7 +36,8 @@ typedef enum {
 typedef struct {
     int x, y;  // Pozycja jedzenia
     FoodType type;
-    bool active; 
+    bool active;
+    time_t lastSpawnTime; 
 } Food;
 
 typedef struct {
@@ -67,8 +68,8 @@ void growSnake(GameState *state);       //yes
 void spawnFood(GameState *state, FoodType type); //yes
 void drawTimer(GameState *state);        //yes 
 void drawFood(GameState *state);        //yes
-void checkEatingFruit(GameState *state); //in progress
-
+void checkEatingFruit(GameState *state); //yes
+void changePositionFood(GameState *state);  //in progress
 
 int main() {
     GameState state;
@@ -108,7 +109,6 @@ int main() {
     
     displayHighscores(&state, state.scoreCount);
     goto start;
-    endwin(); //exit ncurses
 
     return 0;
 }
@@ -161,7 +161,7 @@ void displayMenu(GameState *state) {
                 displayMoves();
                 break;
             case '5':
-                endwin();
+                endwin(); //exit ncurses
                 exit(0); // Wyjście z gry
            // default:
              //   mvprintw(13, WIDTH / 2 - 10, "");
@@ -291,8 +291,10 @@ void initializeGame(GameState *state) {
     // jedzenie 
     srand(time(NULL));
     spawnFood(state, NORMAL);
-    state->food[SPECIAL].active = false;    
-    state->food[POISON].active = false;
+    spawnFood(state, SPECIAL);
+    spawnFood(state, SPECIAL);
+    //state->food[SPECIAL].active = false;    
+    //state->food[POISON].active = false;
 
     clear();    
     // highscores
@@ -351,7 +353,7 @@ void drawFood(GameState *state) {
                     break;
                 case POISON:
                     attron(COLOR_PAIR(3)); // Kolor niebieski
-                    mvprintw(state->food[i].y, state->food[i].x, "!");
+                    mvprintw(state->food[i].y, state->food[i].x, "X");
                     attroff(COLOR_PAIR(3));
                     break;
             }
@@ -409,6 +411,8 @@ void updateGame(GameState *state) {
 
     // zjadl owoc ??
     checkEatingFruit(state);
+    //zmien pozycje specjalnych i trujacych owocow
+    changePositionFood(state); 
 }
 
 bool checkCollision(GameState *state) {
@@ -499,4 +503,15 @@ void spawnFood(GameState *state, FoodType type) {
     state->food[type].y = y;
     state->food[type].type = type;
     state->food[type].active = true;
+    state->food[type].lastSpawnTime = time(NULL);
+}
+
+void changePositionFood(GameState *state) {
+    time_t currentTime = time(NULL);
+    int foodRespawnInterval = 4;
+    
+    if(difftime(currentTime, state->food[POISON].lastSpawnTime) >= foodRespawnInterval)
+        spawnFood(state, POISON);
+    if(difftime(currentTime, state->food[SPECIAL].lastSpawnTime) >= foodRespawnInterval-2)
+        spawnFood(state, SPECIAL);
 }
