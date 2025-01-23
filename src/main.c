@@ -40,19 +40,30 @@ typedef struct {
     time_t lastSpawnTime; 
 } Food;
 
+//poziom trudnosci
+typedef enum {
+    EASY,
+    MEDIUM,
+    HARD
+} Difficulty;
+
 typedef struct {
     char board[HEIGHT][WIDTH]; // Plansza gry
     Snake snake;               // gracz
     Food food[3];                 // Jedzenie  0-normal 1-special 2-poison  
     int score;                 // Wynik
     HighScore scores[MAX_SCORES];
+    Difficulty difficulty; // Poziom trudnosci
     int scoreCount;
+    int speed;
+    int obstacles;
     time_t startTime;
     bool gameOver;             // Czy koniec gry??
 } GameState;
 
 void displayMenu(GameState *state);     //yes
-void chooseDifficulty(GameState *state); // no no
+void chooseDifficulty(GameState *state); //yes
+void applyDifficultySettings(GameState *state); //yes 
 void displayMoves();                    //yes
 int loadHighScores(HighScore scores[]); //yes
 void displayHighscores(GameState *state, int count); //yes
@@ -60,6 +71,7 @@ void sortHighScores(HighScore scores[], int count);  //yes
 void saveHighScores(HighScore scores[], int count); //yes
 void addHighScore(HighScore scores[], int *count, char *name, int score); //yes
 void initializeGame(GameState *state);  //yes
+void spawnObstacles(GameState *state);   //in progress
 void drawBoard(GameState *state);       //yes
 void handleInput(GameState *state);     //yes
 void updateGame(GameState *state);      //yes
@@ -69,7 +81,7 @@ void spawnFood(GameState *state, FoodType type); //yes
 void drawTimer(GameState *state);        //yes 
 void drawFood(GameState *state);        //yes
 void checkEatingFruit(GameState *state); //yes
-void changePositionFood(GameState *state);  //in progress
+void changePositionFood(GameState *state);  //yes
 
 int main() {
     GameState state;
@@ -84,8 +96,7 @@ int main() {
         updateGame(&state);
         drawBoard(&state);
         drawTimer(&state);
-        //usleep(100000);
-        usleep(75000);
+        usleep(state.speed);
     }
     
     mvprintw(HEIGHT / 2, WIDTH / 2 - 5, "GAME OVER!");
@@ -132,7 +143,7 @@ void displayMenu(GameState *state) {
     noecho();
     curs_set(FALSE); //brak kursora
     clear();
-
+    
     int choice = 0;
 
     while (true) {
@@ -152,8 +163,8 @@ void displayMenu(GameState *state) {
                 clear();
                 return; // Rozpocznij grę
             case '2':
-                //chooseDifficulty();
-                return;
+                chooseDifficulty(state);
+                break;
             case '3':
                 displayHighscores(state, state->scoreCount);
                 break;
@@ -172,7 +183,50 @@ void displayMenu(GameState *state) {
 }
 
 void chooseDifficulty(GameState *state) {
-    return;
+    clear();
+    int choice = 0; 
+
+    mvprintw(5, WIDTH / 2 - 5, "=== DIFICULTY ===");
+    mvprintw(7, WIDTH / 2 - 5, "1. EASY");
+    mvprintw(8, WIDTH / 2 - 5, "2. MEDIUM");
+    mvprintw(9, WIDTH / 2 - 5, "3. HARDCORE");
+    mvprintw(13, WIDTH / 2 - 5, "Choose option: ");
+    refresh();
+    
+    nodelay(stdscr, FALSE);   
+    choice = getch(); // Odczyt wyboru gracza
+
+    switch (choice) {
+        case '1':
+            state->difficulty = EASY;
+            break;
+        case '2':
+            state->difficulty = MEDIUM;
+            break;
+        case '3':
+            state->difficulty = HARD;
+            break;
+        default:
+            state->difficulty = EASY;
+ 
+   }
+    
+    clear();
+    mvprintw(5, WIDTH / 2 - 7, "Difficulty set to: ");
+    switch (state->difficulty) {
+        case EASY:
+            mvprintw(7, WIDTH / 2 - 7, "EASY");
+            break;
+        case MEDIUM:
+            mvprintw(7, WIDTH / 2 - 7, "MEDIUM");
+            break;
+        case HARD:
+            mvprintw(7, WIDTH / 2 - 7, "HARD");
+            break;
+    }
+    refresh();
+    usleep(2000000);
+    clear();
 }
 
 void displayMoves() {
@@ -183,10 +237,26 @@ void displayMoves() {
     mvprintw(7, WIDTH / 2 - 10, "S or key DOWN - to go down");
     mvprintw(8, WIDTH / 2 - 10, "A or key LEFT - to go left");
     mvprintw(9, WIDTH / 2 - 10, "D or key RIGHT - to go right");
-    mvprintw(11, WIDTH / 2 - 10, "Others:");
+    mvprintw(11, WIDTH / 2 - 10, "Game controls:");
     mvprintw(12, WIDTH / 2 - 10, "P - to pause a game");
     mvprintw(13, WIDTH / 2 - 10, "X - to exit during a game");
-    mvprintw(15, WIDTH / 2 - 10, "Press any key to go back.");
+    mvprintw(15, WIDTH / 2 - 10, "=== Obstacles ===");
+    mvprintw(17, WIDTH / 2 - 10, "   Avoid hitting obstacles (walls or special barriers).");
+    mvprintw(18, WIDTH / 2 - 10, "If you hit one, the game will end.");
+    mvprintw(20, WIDTH / 2 - 10, "=== How the snake grows ===");
+    mvprintw(22, WIDTH / 2 - 10, "The snake grows by one segment after eating a fruit.");
+    mvprintw(25, WIDTH / 2 - 10, "=== Fruits ===");
+    mvprintw(27, WIDTH / 2 - 10, "There are three types of fruits:");
+    mvprintw(28, WIDTH / 2 - 10, "@ Regular Fruit (Normal):");
+    mvprintw(29, WIDTH / 2 - 5, "    Adds point to your score and grows the snake.");
+    mvprintw(30, WIDTH / 2 - 10, "* Special Fruit:");
+    mvprintw(31, WIDTH / 2 - 5, "    Adds more points than regular fruit (depends on the difficulty).");
+    mvprintw(32, WIDTH / 2 - 10, "X Poison Fruit:");
+    mvprintw(33, WIDTH / 2 - 5, "    Causes the snake to shrink by one segment.");
+    mvprintw(34, WIDTH / 2 - 5, "    Reduces the player's score by a small amount");    
+
+    mvprintw(36, WIDTH / 2 - 10, "Press any key to go back.");
+
     refresh();
     nodelay(stdscr, FALSE);
     getch();
@@ -220,7 +290,6 @@ void sortHighScores(HighScore scores[], int count) {
             if (scores[j].score < scores[j + 1].score) {
                 HighScore temp = scores[j];
                 scores[j] = scores[j + 1];
-                scores[j + 1] = temp;
             }
         }
     }
@@ -254,11 +323,15 @@ void initializeGame(GameState *state) {
     keypad(stdscr, TRUE);
     nodelay(stdscr, TRUE); //nie czekaj na input    
     start_color();
-    
+   
     init_pair(1, COLOR_GREEN, COLOR_BLACK);  // kolor snake'a
     init_pair(2, COLOR_RED, COLOR_BLACK);    // kolor owocu, gameover
-    init_pair(3, COLOR_BLUE, COLOR_BLACK);   // kolor scian
-    init_pair(4, COLOR_YELLOW, COLOR_BLACK);   // kolor wyniku 
+    init_pair(3, COLOR_BLUE, COLOR_BLACK);   // kolor scian, przeszkod
+    init_pair(4, COLOR_YELLOW, COLOR_BLACK);   // kolor wyniku, specjalnego owocu
+    init_pair(5, COLOR_MAGENTA, COLOR_BLACK);   // kolor trujacego owocu
+    
+    // ustawienie poziomu trudnosci
+    applyDifficultySettings(state);
     
     // score
     state->score = 0;
@@ -280,8 +353,8 @@ void initializeGame(GameState *state) {
     for(int i = 0; i < WIDTH; i++) {
         state->board[i][0] = '_';
         state->board[i][HEIGHT-1] = 175;
-    }
-
+    } 
+    
     // snake
     state->snake.length = 1;
     state->snake.direction = 'D';
@@ -292,10 +365,11 @@ void initializeGame(GameState *state) {
     srand(time(NULL));
     spawnFood(state, NORMAL);
     spawnFood(state, SPECIAL);
-    spawnFood(state, SPECIAL);
-    //state->food[SPECIAL].active = false;    
-    //state->food[POISON].active = false;
+    spawnFood(state, POISON);
 
+    //przeszkody 
+    spawnObstacles(state);
+ 
     clear();    
     // highscores
     attron(COLOR_PAIR(4));
@@ -304,6 +378,50 @@ void initializeGame(GameState *state) {
         mvprintw(10 + 2*i, WIDTH + 5, "%d. %s - %d", i + 1, state->scores[i].name, state->scores[i].score);
     }
     attroff(COLOR_PAIR(4));
+}
+
+void applyDifficultySettings(GameState *state) {
+    switch (state->difficulty) {
+        case EASY:
+            state->speed = 100000;
+            state->obstacles = 7;
+            break;
+        case MEDIUM:
+            state->speed = 70000;
+            state->obstacles = 10;
+            break;
+        case HARD:
+            state->speed = 50000;
+            state->obstacles = 12;
+            break;
+        default:
+            state->speed = 100000;
+            state->obstacles = 7;
+            break;
+    }
+
+}
+
+void spawnObstacles(GameState *state) {
+    int numObstacles = state->obstacles;
+    while (numObstacles > 0) {
+        int x = rand() % (WIDTH - 2) + 1; // Losowanie pozycji 
+        int y = rand() % (HEIGHT - 2) + 1;
+
+        // czy nie na snake'u
+        bool collision = false;
+        for (int i = 0; i < state->snake.length; i++) {
+            if (state->snake.segments[i].x == x && state->snake.segments[i].y == y) {
+                collision = true;
+                break;
+            }
+        }
+        
+        if (state->board[y][x] == ' ' && !collision) {
+            state->board[y][x] = '#'; //dodaj przeszkode 
+            numObstacles--;
+        }
+    }
 }
 
 void drawTimer(GameState *state) {
@@ -352,9 +470,9 @@ void drawFood(GameState *state) {
                     attroff(COLOR_PAIR(4));
                     break;
                 case POISON:
-                    attron(COLOR_PAIR(3)); // Kolor niebieski
+                    attron(COLOR_PAIR(5)); // Kolor magenta
                     mvprintw(state->food[i].y, state->food[i].x, "X");
-                    attroff(COLOR_PAIR(3));
+                    attroff(COLOR_PAIR(5));
                     break;
             }
         }
@@ -393,9 +511,8 @@ void handleInput(GameState *state) {
 
 void updateGame(GameState *state) {
     // ruch ciala weza
-    for (int i = state->snake.length - 1; i > 0; i--) {
+    for (int i = state->snake.length - 1; i > 0; i--)
         state->snake.segments[i] = state->snake.segments[i - 1];
-    }
 
     // Ruch glowy weza
     switch (state->snake.direction) {
@@ -416,21 +533,25 @@ void updateGame(GameState *state) {
 }
 
 bool checkCollision(GameState *state) {
+    int x = state->snake.segments[0].x;
+    int y = state->snake.segments[0].y;
+        
     // kolizja ściana
-    if (state->snake.segments[0].x <= 0 || state->snake.segments[0].x >= WIDTH-1 ||
-        state->snake.segments[0].y <= 0 || state->snake.segments[0].y >= HEIGHT-1) {
-            return true;
-    }
+    if (x <= 0 || x >= WIDTH-1 || y <= 0 || y >= HEIGHT-1)
+        return true;
+    
+    // kolizja przeszkoda
+    if (state->board[x][y] == '#')
+       return true;
     
     // kolizja cialo weza
     if (state->snake.length <= 1)
         return false;
     for (int i = 1; i < state->snake.length; i++) {
-        if (state->snake.segments[0].x == state->snake.segments[i].x && 
-            state->snake.segments[0].y == state->snake.segments[i].y) {
+        if (x == state->snake.segments[i].x && y == state->snake.segments[i].y)
             return true;
-        }
     }
+
     return false;
 }
 
@@ -442,12 +563,12 @@ void checkEatingFruit(GameState *state) {
         
             switch (state->food[i].type) {
                 case NORMAL:
-                    state->score += 100;
+                    state->score += (state->difficulty == EASY)? 100: (state->difficulty == MEDIUM)? 150:225;
                     growSnake(state);
                     spawnFood(state, NORMAL);
                     break;
                 case SPECIAL:
-                    state->score += 300; // Wyższy bonus punktowy
+                    state->score += (state->difficulty == EASY)? 230: 300; // Wyższy bonus punktowy
                     growSnake(state);
                     growSnake(state); // Szybszy wzrost
                     spawnFood(state, SPECIAL);
@@ -456,7 +577,10 @@ void checkEatingFruit(GameState *state) {
                     state->score -= 200; // Kara punktowa
                     if (state->snake.length > 1) {
                         state->snake.length--; // kara skroc snake'a
-                    } else {
+                    }
+                    else if(state->difficulty == HARD)
+                        state->gameOver = true; 
+                    else {
                         state->gameOver = true; // Koniec gry gdy 1 segment i poison
                     }
                     spawnFood(state, POISON);
@@ -483,6 +607,10 @@ void spawnFood(GameState *state, FoodType type) {
         x = 1 + rand() % (WIDTH - 2);
         y = 1 + rand() % (HEIGHT - 2);
 
+        // czy nie na przeszkodzie
+        if (state->board[y][x] == '#') 
+            validPosition = false;
+
         // czy nie jest na wezu
         for (int i = 0; i < state->snake.length; i++) {
             if ((x == state->snake.segments[i].x) && (y == state->snake.segments[i].y)) {
@@ -502,16 +630,18 @@ void spawnFood(GameState *state, FoodType type) {
     state->food[type].x = x;
     state->food[type].y = y;
     state->food[type].type = type;
-    state->food[type].active = true;
+    state->food[type].active = !(state->food[type].active); //przez chwilę owoc jest nieaktywny na planszy
     state->food[type].lastSpawnTime = time(NULL);
 }
 
 void changePositionFood(GameState *state) {
     time_t currentTime = time(NULL);
-    int foodRespawnInterval = 4;
+    const int foodRespawnInterval = 4;
     
     if(difftime(currentTime, state->food[POISON].lastSpawnTime) >= foodRespawnInterval)
         spawnFood(state, POISON);
-    if(difftime(currentTime, state->food[SPECIAL].lastSpawnTime) >= foodRespawnInterval-2)
+    if(difftime(currentTime, state->food[SPECIAL].lastSpawnTime) >= foodRespawnInterval-2.4)
         spawnFood(state, SPECIAL);
+    if(difftime(currentTime, state->food[NORMAL].lastSpawnTime) >= foodRespawnInterval+2)
+        spawnFood(state, NORMAL);
 }
