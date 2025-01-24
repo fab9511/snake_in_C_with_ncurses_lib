@@ -54,10 +54,10 @@ typedef struct {
     int score;                 // Wynik
     HighScore scores[MAX_SCORES];
     Difficulty difficulty; // Poziom trudnosci
-    int scoreCount;
-    int speed;
-    int obstacles;
-    time_t startTime;
+    int scoreCount;     //wynik gracza
+    int speed;          //predkosc gry
+    int obstacles;      
+    time_t startTime;       
     bool gameOver;             // Czy koniec gry??
 } GameState;
 
@@ -190,7 +190,7 @@ void chooseDifficulty(GameState *state) {
     mvprintw(7, WIDTH / 2 - 5, "1. EASY");
     mvprintw(8, WIDTH / 2 - 5, "2. MEDIUM");
     mvprintw(9, WIDTH / 2 - 5, "3. HARDCORE");
-    mvprintw(13, WIDTH / 2 - 5, "Choose option: ");
+    mvprintw(11, WIDTH / 2 - 5, "Choose option: ");
     refresh();
     
     nodelay(stdscr, FALSE);   
@@ -225,7 +225,7 @@ void chooseDifficulty(GameState *state) {
             break;
     }
     refresh();
-    usleep(2000000);
+    usleep(1600000);
     clear();
 }
 
@@ -241,21 +241,21 @@ void displayMoves() {
     mvprintw(12, WIDTH / 2 - 10, "P - to pause a game");
     mvprintw(13, WIDTH / 2 - 10, "X - to exit during a game");
     mvprintw(15, WIDTH / 2 - 10, "=== Obstacles ===");
-    mvprintw(17, WIDTH / 2 - 10, "   Avoid hitting obstacles (walls or special barriers).");
-    mvprintw(18, WIDTH / 2 - 10, "If you hit one, the game will end.");
+    mvprintw(17, WIDTH / 2 - 10, "Avoid hitting obstacles (walls or special barriers)");
+    mvprintw(18, WIDTH / 2 - 10, "If you hit one, the game will end");
     mvprintw(20, WIDTH / 2 - 10, "=== How the snake grows ===");
-    mvprintw(22, WIDTH / 2 - 10, "The snake grows by one segment after eating a fruit.");
+    mvprintw(22, WIDTH / 2 - 10, "The snake grows by one segment after eating a fruit");
     mvprintw(25, WIDTH / 2 - 10, "=== Fruits ===");
     mvprintw(27, WIDTH / 2 - 10, "There are three types of fruits:");
-    mvprintw(28, WIDTH / 2 - 10, "@ Regular Fruit (Normal):");
-    mvprintw(29, WIDTH / 2 - 5, "    Adds point to your score and grows the snake.");
-    mvprintw(30, WIDTH / 2 - 10, "* Special Fruit:");
-    mvprintw(31, WIDTH / 2 - 5, "    Adds more points than regular fruit (depends on the difficulty).");
-    mvprintw(32, WIDTH / 2 - 10, "X Poison Fruit:");
-    mvprintw(33, WIDTH / 2 - 5, "    Causes the snake to shrink by one segment.");
-    mvprintw(34, WIDTH / 2 - 5, "    Reduces the player's score by a small amount");    
+    mvprintw(29, WIDTH / 2 - 10, "@ Regular Fruit (Normal):");
+    mvprintw(30, WIDTH / 2 - 5, "    Adds point to your score and grows the snake");
+    mvprintw(31, WIDTH / 2 - 10, "* Special Fruit:");
+    mvprintw(32, WIDTH / 2 - 5, "    Adds more points than regular fruit (depends on the difficulty)");
+    mvprintw(33, WIDTH / 2 - 10, "X Poison Fruit:");
+    mvprintw(34, WIDTH / 2 - 5, "    Causes the snake to shrink by one segment");
+    mvprintw(35, WIDTH / 2 - 5, "    Reduces the player's score by a small amount");    
 
-    mvprintw(36, WIDTH / 2 - 10, "Press any key to go back.");
+    mvprintw(37, WIDTH / 2 - 10, "Press any key to go back.");
 
     refresh();
     nodelay(stdscr, FALSE);
