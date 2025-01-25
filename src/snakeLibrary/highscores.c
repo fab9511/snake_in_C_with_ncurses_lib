@@ -48,3 +48,17 @@ void addHighScore(HighScore scores[], int *count, char *name, int score) {
 
     sortHighScores(scores, *count);
 }
+
+void getGameScore(GameState *state) {
+    if (state->score > 0) {
+        char playerName[50];
+        mvprintw(HEIGHT / 2 + 3, WIDTH / 2 - 5, "Enter your name: ");
+        refresh();
+        echo();
+        mvgetstr(HEIGHT / 2 + 4, WIDTH / 2 - 5, playerName);
+        noecho();
+
+        addHighScore(state->scores, &state->scoreCount, playerName, state->score);
+        saveHighScores(state->scores, state->scoreCount);
+    }
+}

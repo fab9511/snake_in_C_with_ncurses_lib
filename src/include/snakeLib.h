@@ -16,4 +16,3 @@
 #include "snake.h"         // Funkcje związane z wężem (growSnake, obsługa ruchów itd.)
 #include "snakeLib.h"      // Główna biblioteka funkcji wspólnych (może zawierać nagłówki do wszystkich funkcji)
 #include "utility.h"       // Funkcje pomocnicze (drawTimer, inne pomocne narzędzia)
-

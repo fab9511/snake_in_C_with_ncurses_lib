@@ -5,3 +5,4 @@ int loadHighScores(HighScore scores[]);
 void sortHighScores(HighScore scores[], int count);
 void saveHighScores(HighScore scores[], int count);
 void addHighScore(HighScore scores[], int *count, char *name, int score);
+void getGameScore(GameState *state);

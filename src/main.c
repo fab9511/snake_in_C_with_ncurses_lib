@@ -1,10 +1,3 @@
-#include <stdio.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <time.h>
-#include <unistd.h>
-#include <string.h>
-#include <ncurses.h>
 #include "snakeLib.h"
 
 int main() {
@@ -30,18 +23,8 @@ int main() {
     getch();
     
     //zapis wyniku
-    if (state.score > 0) {
-        char playerName[50];
-        mvprintw(HEIGHT / 2 + 3, WIDTH / 2 - 5, "Enter your name: ");
-        refresh();
-        echo();
-        mvgetstr(HEIGHT / 2 + 4, WIDTH / 2 - 5, playerName);
-        noecho();
-        
-        addHighScore(state.scores, &state.scoreCount, playerName, state.score);
-        saveHighScores(state.scores, state.scoreCount);
-    }    
-    
+    getGameScore(&state);
+
     displayHighscores(&state, state.scoreCount);
     goto start;
 
